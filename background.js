@@ -26,7 +26,7 @@ async function createOffscreen(){
 
 
 
-const randFunction = (input) => {
+const randFunction = (input, restInt) => {
     let min = input*0.8
     let max = input*1.2
     
@@ -34,7 +34,7 @@ const randFunction = (input) => {
  
     const startInterval = Math.max(randNumber, Math.round(min))
 
-    const endInterval = startInterval + 10
+    const endInterval = startInterval + restInt
 
     return {
         restStart: startInterval,
@@ -50,30 +50,26 @@ let breakCounter;
 //setting up an alarm with the timeInput
 chrome.alarms.onAlarm.addListener((alarm)=>{
     if(alarm.name==="HIIL"){
-        chrome.storage.local.get(["timer", "isRunning", "timeInput", "restTime"/*,"numBreaks"*/],
+        chrome.storage.local.get(["timer", "isRunning", "timeInput", "focusTime","restRatio", "restTime"],
             (res)=>{
                 
             if (res.isRunning){
                 let timer = res.timer+1
                 let isRunning = true
-                //numBreaks=(res.timeInput*60)/120 //average time duration of a work bout 
-                //send a message with the sound to be initialized in the offscreen script
-                                
+                let restInt = res.focusTime*60*res.restRatio
                 //create random interval for resting if it doesnt exist yet
                 if(!rand){
-                    rand = randFunction(120); 
+                    rand = randFunction((res.focusTime*60), restInt); 
                     chrome.storage.local.set({restTime:rand}); //here we store that variable in the local storage
                 }
                 //assign restTime to whatever rest interval exists already
                 let restTime = res.restTime || rand;
                 
-                //console.log(`numBreaks: ${numBreaks}`)
-                //console.log(`timer ${timer}`)
-                //console.log(``)
-                //console.log(`rand: {start: ${rand.restStart} , stop: ${rand.restStop} }`)
-               //console.log(`restTime: {start: ${restTime.restStart} , stop: ${restTime.restStop} }`)
-            
-
+                console.log(`timer: ${timer}`)
+                console.log(`restRatio: ${res.restRatio}`)
+                console.log(`focusTime: ${res.focusTime}`)
+                console.log(`restInt: ${restInt}`)
+                console.log(`restTime: {restTime.restStart: ${restTime.restStart}, restTime.restStop: ${restTime.restStop}}`)
                 //if the timer is equal to start of alarm, then set off alarm
                 if (timer === restTime.restStart) {
                     this.registration.showNotification("HIIL", {
@@ -89,7 +85,7 @@ chrome.alarms.onAlarm.addListener((alarm)=>{
                     });
                     createOffscreen();
 
-                    rand = randFunction(120);
+                    rand = randFunction((res.focusTime*60), restInt);
                     rand.restStart += timer
                     rand.restStop += timer
                   
@@ -103,7 +99,12 @@ chrome.alarms.onAlarm.addListener((alarm)=>{
                     })
                     timer = 0
                     isRunning = false
-                    chrome.storage.local.set({restTime:{restStart:0,restStop:0}});
+                    chrome.storage.local.set({
+                        restTime:{restStart:0,restStop:0},
+                        focusTime:2,
+                        restRatio:0.1
+                    
+                    });
                     createOffscreen();
                 }
 
@@ -120,18 +121,20 @@ chrome.alarms.onAlarm.addListener((alarm)=>{
 
 
 //getting and setting the parameters for the timer local storage variables
-chrome.storage.local.get(["timer","isRunning","timeInput","restTime"],(res)=>{
+chrome.storage.local.get(["timer","isRunning","timeInput","restTime", "restRatio","focusTime"],(res)=>{
     chrome.storage.local.set({
         timer:"timer" in res ? res.timer: 0,
         timeInput:"timeInput" in res? res.timeInput:25,
         isRunning: "isRunning" in res?  res.isRunning : false,
-        restTime: null
-        //numBreaks: "numBreaks" in res ? res.numBreaks : 10
+        restTime: null,
+        focusTime: "focusTime" in res? res.focusTime: 2,
+        restRatio: "restRatio" in res? res.restRatio: 0.1
+        
+
     })
 })
 
 
-/*todo: style -> some black and gradient
-                add input for rest length
-                add input for work length
+/*todo: style -> add collapsible for info
+                 add buy me coffee            
 */
